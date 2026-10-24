@@ -25,13 +25,22 @@ jobs:
       - name: Nombres en español de Scryfall
         shell: python
         run: |
-          import json, urllib.request, ijson
+          import json, urllib.request, ijson, gzip
           H = {"User-Agent": "SynerveilNames/1.0", "Accept": "application/json"}
           get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers=H), timeout=300)
+          # the bulk file's address: straight from the list, or asking for that item, or Scryfall's direct link
           bulk = json.load(get("https://api.scryfall.com/bulk-data"))["data"]
-          uri = next(b["download_uri"] for b in bulk if b["type"] == "all_cards")
+          item = next((b for b in bulk if b.get("type") == "all_cards"), {})
+          print("bulk item keys:", sorted(item.keys()))
+          uri = item.get("download_uri")
+          if not uri and item.get("uri"):
+              uri = json.load(get(item["uri"])).get("download_uri")
+          if not uri:
+              uri = "https://api.scryfall.com/bulk-data/all-cards?format=file"
+          print("descargando", uri)
           es = {}
-          with get(uri) as f:
+          with get(uri) as resp:
+              f = gzip.GzipFile(fileobj=resp) if uri.split("?")[0].endswith(".gz") or resp.headers.get("Content-Encoding") == "gzip" else resp
               for c in ijson.items(f, "item"):
                   if c.get("lang") != "es":
                       continue
