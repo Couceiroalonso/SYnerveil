@@ -1,0 +1,17 @@
+{
+  "name": "Synerveil",
+  "short_name": "Synerveil",
+  "description": "Tu colección de Magic, mazos de Commander, análisis y contador de vidas.",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07101B",
+  "theme_color": "#07101B",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

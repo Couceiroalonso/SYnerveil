@@ -1,0 +1,61 @@
+name: Actualizar precios
+
+# Cada lunes (y cuando lo lances a mano desde Actions) pone en cards.json el precio más barato de cada carta
+# entre todas sus ediciones de papel, con datos de Scryfall (Cardmarket en euros y TCGplayer en dólares).
+# Al guardar el cambio, Vercel publica la web otra vez sola.
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/precios.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  precios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install ijson
+      - name: Precios más baratos de Scryfall
+        shell: python
+        run: |
+          import json, urllib.request, ijson, os
+          H = {"User-Agent": "SynerveilPrices/1.0", "Accept": "application/json"}
+          get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers=H), timeout=120)
+          bulk = json.load(get("https://api.scryfall.com/bulk-data"))["data"]
+          uri = next(b["download_uri"] for b in bulk if b["type"] == "default_cards")
+          best = {}
+          with get(uri) as f:
+              for c in ijson.items(f, "item"):
+                  if c.get("digital") or "paper" not in (c.get("games") or []):
+                      continue
+                  p = c.get("prices") or {}
+                  def num(*keys):
+                      vals = [float(p[k]) for k in keys if p.get(k)]
+                      return min(vals) if vals else None
+                  eur, usd = num("eur", "eur_foil"), num("usd", "usd_foil", "usd_etched")
+                  for name in {c["name"], c["name"].split(" // ")[0]}:
+                      b = best.setdefault(name, [None, None])
+                      if eur is not None and (b[0] is None or eur < b[0]): b[0] = eur
+                      if usd is not None and (b[1] is None or usd < b[1]): b[1] = usd
+          rows = json.load(open("cards.json", encoding="utf-8"))
+          changed = 0
+          for r in rows:
+              b = best.get(r[0]) or best.get(r[0].split(" // ")[0])
+              if not b: continue
+              eur = round(b[0], 2) if b[0] is not None else r[8]
+              usd = round(b[1], 2) if b[1] is not None else r[9]
+              if (eur, usd) != (r[8], r[9]): r[8], r[9] = eur, usd; changed += 1
+          json.dump(rows, open("cards.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+          print("precios cambiados:", changed, "de", len(rows))
+      - name: Guardar
+        run: |
+          git config user.name "synerveil-bot"
+          git config user.email "synerveil-bot@users.noreply.github.com"
+          git add cards.json
+          git diff --cached --quiet || git commit -m "Precios actualizados"
+          git push

@@ -1,0 +1,17 @@
+/* sign-in screen and account button (web only) */
+#authGate { position: fixed; inset: 0; z-index: 200; background: radial-gradient(120% 80% at 50% 0%, #10233D, #07101B 60%); display: grid; place-items: center; padding: 24px 16px; overflow-y: auto }
+#authGate[hidden] { display: none }
+.ag-box { width: 100%; max-width: 380px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center }
+.ag-box h1 { font-family: Cinzel, serif; letter-spacing: .16em; font-size: 1.9rem; margin: 6px 0 0; color: #F4F6FA }
+.ag-tag { margin: 0 0 14px; color: #8F9CB3; letter-spacing: .3em; font-size: .7rem; text-transform: uppercase }
+.ag-box form { width: 100%; display: flex; flex-direction: column; gap: 12px; text-align: left; background: #0C1726; border: 1px solid #1D2D46; border-radius: 14px; padding: 18px }
+.ag-box h2 { margin: 0; font-size: 1.15rem; text-align: center; color: #E4E9F1 }
+.ag-box label { display: flex; flex-direction: column; gap: 5px; font-size: .9rem; color: #8F9CB3 }
+.ag-box input { font: inherit; font-size: 16px; padding: 11px 12px; border-radius: 10px; border: 1px solid #1D2D46; background: #07101B; color: #E4E9F1 }
+.ag-box .btn { width: 100%; min-height: 46px }
+.ag-msg { margin: 0; min-height: 1.2em; color: #FF8A80; font-size: .9rem }
+.ag-msg.ok { color: #6CC77A }
+.ag-note { margin: 0; color: #8F9CB3; font-size: .9rem }
+.ag-links { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap }
+.ag-links button { background: none; border: 0; color: #5AA9FF; font: inherit; font-size: .9rem; cursor: pointer; padding: 6px 0 }
+.ag-account { background: none; border: 0; color: #8F9CB3; font: inherit; font-size: .75rem; cursor: pointer; padding: 2px 0; text-decoration: underline; text-underline-offset: 3px }
