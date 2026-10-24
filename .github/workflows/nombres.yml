@@ -21,18 +21,17 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - run: python -m pip install ijson
       - name: Nombres en español de Scryfall
         shell: python
         run: |
-          import json, urllib.request, ijson, gzip
+          import json, urllib.request, gzip, io
           H = {"User-Agent": "SynerveilNames/1.0", "Accept": "application/json"}
           get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers=H), timeout=300)
           # the bulk file's address: straight from the list, or asking for that item, or Scryfall's direct link
           bulk = json.load(get("https://api.scryfall.com/bulk-data"))["data"]
           item = next((b for b in bulk if b.get("type") == "all_cards"), {})
           print("bulk item keys:", sorted(item.keys()))
-          uri = item.get("download_uri")
+          uri = item.get("jsonl_download_uri") or item.get("download_uri")
           if not uri and item.get("uri"):
               uri = json.load(get(item["uri"])).get("download_uri")
           if not uri:
@@ -40,8 +39,15 @@ jobs:
           print("descargando", uri)
           es = {}
           with get(uri) as resp:
-              f = gzip.GzipFile(fileobj=resp) if uri.split("?")[0].endswith(".gz") or resp.headers.get("Content-Encoding") == "gzip" else resp
-              for c in ijson.items(f, "item"):
+              # one card per line (JSON Lines, or the classic array written one card per line), compressed or not
+              raw = io.BufferedReader(resp)
+              f = gzip.GzipFile(fileobj=raw) if raw.peek(2)[:2] == b"\x1f\x8b" else raw
+              def cards():
+                  for line in io.TextIOWrapper(f, encoding="utf-8"):
+                      line = line.strip().rstrip(",")
+                      if line.startswith("{"):
+                          yield json.loads(line)
+              for c in cards():
                   if c.get("lang") != "es":
                       continue
                   en = c.get("name")
