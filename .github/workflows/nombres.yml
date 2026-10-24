@@ -14,11 +14,14 @@ permissions:
 
 jobs:
   nombres:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - run: pip install ijson
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python -m pip install ijson
       - name: Nombres en español de Scryfall
         shell: python
         run: |
