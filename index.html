@@ -17,6 +17,10 @@ window.SYNERVEIL_WEB = true;
 (() => { let res; const p = new Promise(r => { res = r; }); window.__setClaude = c => res(c); window.claude = { use: async n => (await p).use(n) };
   // if the account code can't load at all, the app still opens and keeps things in this browser
   setTimeout(() => res({ use: async () => null }), 15000); })();
+// if something breaks, say so on screen (helps to report it)
+(() => { const show = m => { try { const d = document.createElement("div"); d.className = "web-err"; d.textContent = "Error: " + m; (document.body || document.documentElement).appendChild(d); setTimeout(() => d.remove(), 20000); } catch (x) {} };
+  addEventListener("error", e => show(e.message || "desconocido"));
+  addEventListener("unhandledrejection", e => show((e.reason && (e.reason.message || e.reason.code)) || String(e.reason))); })();
 </script>
 <script type="module" src="/web.js"></script>
 </head>
@@ -4049,7 +4053,9 @@ function wireHand() {
       $("#addSearch").placeholder = "Busca en español o en inglés: Anillo solar, Cultivate…";
     }).catch(() => {});
   } catch (e) { $("#boot").innerHTML = "No se pudo cargar la base de datos de cartas. Recarga la página."; return; }
-  await Store.init();
+  $("#boot").innerHTML = '<div class="spinner"></div>Abriendo tu colección…';
+  // never stay stuck on the loading screen: after 12 s the app opens anyway and the account catches up
+  await Promise.race([Store.init().catch(e => console.error(e)), new Promise(r => setTimeout(r, 12000))]);
   $("#boot").hidden = true;
   let tab = "col"; try { tab = localStorage.getItem("forja.tab") || "col"; } catch (e) {}
   if (location.hash === "#mazo") tab = "ai";

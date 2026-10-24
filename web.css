@@ -18,3 +18,4 @@
 
 /* anything marked hidden stays hidden, whatever its own display style says */
 [hidden] { display: none !important }
+.web-err { position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 300; background: #3A0F12; color: #FFB4AB; border: 1px solid #FF8A80; border-radius: 10px; padding: 8px 12px; font: 12px/1.4 monospace; word-break: break-word }
