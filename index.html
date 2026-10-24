@@ -654,12 +654,13 @@ function search(q, onlyCommanders, limit = 30) {
   for (let i = 0; i < DB.rows.length; i++) {
     const r = DB.rows[i];
     if (onlyCommanders && !(r[6] & 2)) continue;
-    const k = DB.keys[i];
-    if (toks.every(t => k.includes(t))) hits.push(r);
+    const k = DB.keys[i], es = DB.es && DB.es[i];
+    if (toks.every(t => k.includes(t)) || (es && toks.every(t => es.includes(t)))) hits.push(r);
   }
   const q0 = toks.join(" ");
   hits.sort((a, b) => {
-    const as = norm(a[0]).startsWith(q0) ? 0 : 1, bs = norm(b[0]).startsWith(q0) ? 0 : 1;
+    const st = r => norm(r[0]).startsWith(q0) || (DB.esOf && (DB.esOf.get(r) || "").startsWith(q0)) ? 0 : 1;
+    const as = st(a), bs = st(b);
     if (as !== bs) return as - bs;
     return (a[7] || 1e6) - (b[7] || 1e6);
   });
@@ -892,13 +893,13 @@ $("#btnImportOk").onclick = () => {
   const cartas = {...col.cartas};
   for (const [n, q] of ok) cartas[n] = (cartas[n] || 0) + q;
   col.cartas = cartas; Store.saveCol(col);
-  $("#importResult").innerHTML = `${ok.length} cartas añadidas a “${esc(col.nombre)}”.` + (bad.length ? ` No reconozco ${bad.length}: ${bad.slice(0, 8).map(esc).join(", ")}${bad.length > 8 ? "…" : ""}. Revisa que estén en inglés.` : "");
+  $("#importResult").innerHTML = `${ok.length} cartas añadidas a “${esc(col.nombre)}”.` + (bad.length ? ` No reconozco ${bad.length}: ${bad.slice(0, 8).map(esc).join(", ")}${bad.length > 8 ? "…" : ""}. Revisa que estén bien escritos${DB.es ? "" : " y en inglés"}.` : "");
   if (!bad.length) $("#importText").value = "";
   render();
 };
 // ---------- photo scanner (Claude reads the card names) ----------
 const SC = { files: [], max: 4, ctl: null, found: [] };
-if (ENGINE_ON) $("#btnScan").hidden = true;
+if (ENGINE_ON) { $("#btnScan").hidden = true; $("#btnScan").style.display = "none"; }
 $("#btnScan").onclick = async () => {
   $("#scanPanel").hidden = false; $("#importPanel").hidden = true; $("#newColPanel").hidden = true;
   const sample = await claude.use("sample").catch(() => null);
@@ -4036,6 +4037,17 @@ function wireHand() {
     DB.rows = await res.json();
     DB.keys = DB.rows.map(r => norm(r[0]));
     DB.rows.forEach((r, i) => { DB.byKey.set(DB.keys[i], r); if (r[0].includes(" // ")) { const f = norm(r[0].split(" // ")[0]); if (!DB.byKey.has(f)) DB.byKey.set(f, r); } });
+    // Spanish names (es.json: {"nombre en español": "English name"}): searching and pasting lists also work in Spanish
+    fetch("es.json").then(r => r.ok ? r.json() : null).then(es => {
+      if (!es) return;
+      const idx = new Map(DB.rows.map((r, i) => [r, i])); DB.es = []; DB.esOf = new Map();
+      for (const [n, en] of Object.entries(es)) {
+        const r = DB.byKey.get(norm(en)); if (!r) continue;
+        const k = norm(n); if (!DB.byKey.has(k)) DB.byKey.set(k, r);
+        const i = idx.get(r); DB.es[i] = DB.es[i] ? DB.es[i] + " " + k : k; if (!DB.esOf.has(r)) DB.esOf.set(r, k);
+      }
+      $("#addSearch").placeholder = "Busca en español o en inglés: Anillo solar, Cultivate…";
+    }).catch(() => {});
   } catch (e) { $("#boot").innerHTML = "No se pudo cargar la base de datos de cartas. Recarga la página."; return; }
   await Store.init();
   $("#boot").hidden = true;

@@ -15,3 +15,6 @@
 .ag-links { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap }
 .ag-links button { background: none; border: 0; color: #5AA9FF; font: inherit; font-size: .9rem; cursor: pointer; padding: 6px 0 }
 .ag-account { background: none; border: 0; color: #8F9CB3; font: inherit; font-size: .75rem; cursor: pointer; padding: 2px 0; text-decoration: underline; text-underline-offset: 3px }
+
+/* anything marked hidden stays hidden, whatever its own display style says */
+[hidden] { display: none !important }

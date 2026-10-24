@@ -1,0 +1,51 @@
+name: Nombres en español
+
+# Crea es.json con el nombre en español de cada carta que tenga edición en español,
+# para que en Synerveil se pueda buscar y pegar listas en español. Se repite el día 1 de cada mes.
+on:
+  schedule:
+    - cron: "41 4 1 * *"
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/nombres.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  nombres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install ijson
+      - name: Nombres en español de Scryfall
+        shell: python
+        run: |
+          import json, urllib.request, ijson
+          H = {"User-Agent": "SynerveilNames/1.0", "Accept": "application/json"}
+          get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers=H), timeout=300)
+          bulk = json.load(get("https://api.scryfall.com/bulk-data"))["data"]
+          uri = next(b["download_uri"] for b in bulk if b["type"] == "all_cards")
+          es = {}
+          with get(uri) as f:
+              for c in ijson.items(f, "item"):
+                  if c.get("lang") != "es":
+                      continue
+                  en = c.get("name")
+                  pairs = [(c.get("printed_name"), en)]
+                  for face in c.get("card_faces") or []:
+                      pairs.append((face.get("printed_name"), face.get("name")))
+                  for n, e in pairs:
+                      if n and e and n != e and n not in es:
+                          es[n] = e
+          json.dump(es, open("es.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+          print("nombres en español:", len(es))
+      - name: Guardar
+        run: |
+          git config user.name "synerveil-bot"
+          git config user.email "synerveil-bot@users.noreply.github.com"
+          git add es.json
+          git diff --cached --quiet || git commit -m "Nombres en español"
+          git pull --rebase
+          git push
