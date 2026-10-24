@@ -39,6 +39,7 @@ jobs:
               uri = "https://api.scryfall.com/bulk-data/default-cards?format=file"
           print("descargando", uri)
           best = {}
+          prints, sets = {}, {}
           with get(uri) as resp:
               # one card per line (JSON Lines, or the classic array written one card per line), compressed or not
               raw = io.BufferedReader(resp)
@@ -56,6 +57,11 @@ jobs:
                       vals = [float(p[k]) for k in keys if p.get(k)]
                       return min(vals) if vals else None
                   eur, usd = num("eur", "eur_foil"), num("usd", "usd_foil", "usd_etched")
+                  # every printing with its own price, normal and foil (for the collection's editions)
+                  rnd = lambda k: round(float(p[k]), 2) if p.get(k) else None
+                  sets.setdefault(c["set"], [c.get("set_name", ""), c.get("released_at", "")])
+                  prints.setdefault(c["name"], []).append([c["set"], c.get("collector_number", ""), rnd("eur"), rnd("eur_foil"), rnd("usd"), rnd("usd_foil") or rnd("usd_etched"),
+                                                           1 if c.get("nonfoil", True) else 0, 1 if c.get("foil") or c.get("etched") or "etched" in (c.get("finishes") or []) else 0, c.get("released_at", "")])
                   for name in {c["name"], c["name"].split(" // ")[0]}:
                       b = best.setdefault(name, [None, None])
                       if eur is not None and (b[0] is None or eur < b[0]): b[0] = eur
@@ -69,12 +75,17 @@ jobs:
               usd = round(b[1], 2) if b[1] is not None else r[9]
               if (eur, usd) != (r[8], r[9]): r[8], r[9] = eur, usd; changed += 1
           json.dump(rows, open("cards.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+          for n in prints:
+              prints[n].sort(key=lambda x: x[8], reverse=True)
+              for x in prints[n]: x.pop()
+          json.dump({"sets": sets, "cards": prints}, open("prints.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+          print("ediciones:", sum(len(v) for v in prints.values()), "de", len(prints), "cartas")
           print("precios cambiados:", changed, "de", len(rows))
       - name: Guardar
         run: |
           git config user.name "synerveil-bot"
           git config user.email "synerveil-bot@users.noreply.github.com"
-          git add cards.json
+          git add cards.json prints.json
           git diff --cached --quiet || git commit -m "Precios actualizados"
           git pull --rebase
           git push

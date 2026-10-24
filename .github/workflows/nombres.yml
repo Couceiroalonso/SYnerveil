@@ -57,6 +57,24 @@ jobs:
                   for n, e in pairs:
                       if n and e and n != e and n not in es:
                           es[n] = e
+          print("de Scryfall:", len(es))
+          # MTGJSON has the Spanish names printed in Gatherer, which fills many gaps (old sets, split cards…)
+          try:
+              with get("https://mtgjson.com/api/v5/AtomicCards.json.gz") as r:
+                  atomic = json.load(gzip.GzipFile(fileobj=io.BufferedReader(r)))["data"]
+              added = 0
+              for name, faces in atomic.items():
+                  for face in faces:
+                      for fd in face.get("foreignData") or []:
+                          if fd.get("language") != "Spanish":
+                              continue
+                          pairs = [(fd.get("name"), name if " // " in (fd.get("name") or "") else (face.get("faceName") or name)), (fd.get("faceName"), face.get("faceName") or name)]
+                          for n, e in pairs:
+                              if n and e and n != e and n not in es:
+                                  es[n] = e; added += 1
+              print("de MTGJSON:", added)
+          except Exception as ex:
+              print("MTGJSON no disponible:", ex)
           json.dump(es, open("es.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"), sort_keys=True)
           print("nombres en español:", len(es))
       - name: Guardar
